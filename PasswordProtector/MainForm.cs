@@ -11,10 +11,9 @@ namespace PasswordProtector
         private readonly string _fileName = GetFileName();
         private string _loadedText = string.Empty;
         
-        private static string GetFileName()
-        {
-            return Regex.Match(Application.ExecutablePath, @"(?i)\\([^\\.]+)\.exe$").Groups[1].ToString();
-        }
+        private static string GetFileName() 
+            => Regex.Match(Application.ExecutablePath, @"(?i)\\([^\\.]+)\.exe$").Groups[1].ToString();
+
         public MainForm()
         {
             InitializeComponent();
@@ -29,6 +28,32 @@ namespace PasswordProtector
             Application.Exit();
         }
 
+        private bool errorBox = false;
+        void keyUp(object sender, KeyEventArgs e)
+        {
+            if (errorBox)
+            {
+                errorBox = false;
+                return;
+            }
+               
+            if(e.KeyCode != Keys.Return)
+                return;
+
+            if (GetFileContent())
+            {
+                txtKey.Enabled = false;
+                txtMain.Focus();
+                FormatText();
+            }
+            else
+            {
+                errorBox = true;
+                MessageBox.Show("Could not get content");
+               
+            }
+        }
+
         void BeforeClose()
         {
             if (string.IsNullOrEmpty(txtKey.Text))
@@ -40,21 +65,7 @@ namespace PasswordProtector
                 SaveFile();
         }
 
-        void closing(object sender, System.ComponentModel.CancelEventArgs e)
-        {
-            BeforeClose();
-        }
-
-        void keyUp(object sender, KeyEventArgs e)
-        {
-            if(e.KeyCode != Keys.Return)
-                return;
-
-            txtKey.Enabled = false;
-            txtMain.Focus();
-            GetFileContent();
-            FormatText();
-        }
+        void closing(object sender, System.ComponentModel.CancelEventArgs e) => BeforeClose();
 
         void FormatText()
         {
@@ -71,35 +82,26 @@ namespace PasswordProtector
             }
         }
 
-        private void GetFileContent()
+        bool GetFileContent()
         {
             if(!File.Exists(_fileName))
-                return;
+                return true;
 
             var encryptedText = File.ReadAllText(_fileName);
             try
             {
                 _loadedText = Encrypting.DecryptString(encryptedText, txtKey.Text);
+                return true;
             }
             catch (Exception)
             {
-                System.Threading.Thread.Sleep(2000);
-                Application.Exit();
+                return false;
             }
         }
         
-        private void SaveFile()
+        void SaveFile()
         {
-            var encryptedText = string.Empty;
-            try
-            {
-                encryptedText = Encrypting.EncryptString(txtMain.Text, txtKey.Text);
-            }
-            catch (Exception)
-            {
-                Application.Exit();
-            }
-
+            var encryptedText = Encrypting.EncryptString(txtMain.Text, txtKey.Text);
             File.WriteAllText(_fileName, encryptedText);
         }
     }
